@@ -129,7 +129,7 @@
   * @brief HAL DDR module driver
   * @{
   */
-#if defined (DDRC) && defined (DDRPHYC)
+#if defined (DDRC)
 
 /* Private typedef -----------------------------------------------------------*/
 typedef enum
@@ -981,7 +981,10 @@ static uintptr_t ddr_test_rw_access(void)
     return (uintptr_t)addr;
   }
 
-  *addr = saved_value;
+  if (saved_value != DDR_PATTERN)
+  {
+    *addr = saved_value;
+  }
 
   return 0UL;
 }
@@ -1905,8 +1908,13 @@ static int32_t ssr_entry(bool standby)
     }
   }
 
-  SET_BIT(RCC->DDRCPCFGR, RCC_DDRCPCFGR_DDRCPEN);
-  CLEAR_BIT(RCC->DDRCPCFGR, RCC_DDRCPCFGR_DDRCPLPEN);
+  /* Disable DDRSS bus clocks */
+  CLEAR_BIT(RCC->DDRCPCFGR, RCC_DDRCPCFGR_DDRCPEN);
+  CLEAR_BIT(RCC->DDRCFGR, RCC_DDRCFGR_DDRCFGEN);
+  CLEAR_BIT(RCC->DDRCAPBCFGR, RCC_DDRCAPBCFGR_DDRCAPBEN);
+  CLEAR_BIT(RCC->DDRPHYCAPBCFGR, RCC_DDRPHYCAPBCFGR_DDRPHYCAPBEN);
+
+  /* Configure DDRSS kernel clocks for low power */
   SET_BIT(RCC->DDRPHYCCFGR, RCC_DDRPHYCCFGR_DDRPHYCEN);
   SET_BIT(RCC->DDRITFCFGR, RCC_DDRITFCFGR_DDRPHYDLP);
 
@@ -1940,8 +1948,13 @@ static int32_t stdby_sr_ssr_entry(void)
   */
 static int32_t sr_ssr_exit(void)
 {
-  SET_BIT(RCC->DDRCPCFGR, RCC_DDRCPCFGR_DDRCPEN | RCC_DDRCPCFGR_DDRCPLPEN);
+  /* Enable DDRSS bus clocks */
+  SET_BIT(RCC->DDRCPCFGR, RCC_DDRCPCFGR_DDRCPEN);
+  SET_BIT(RCC->DDRCFGR, RCC_DDRCFGR_DDRCFGEN);
+  SET_BIT(RCC->DDRCAPBCFGR, RCC_DDRCAPBCFGR_DDRCAPBEN);
+  SET_BIT(RCC->DDRPHYCAPBCFGR, RCC_DDRPHYCAPBCFGR_DDRPHYCAPBEN);
 
+  /* Restore DDRSS kernel clocks */
   CLEAR_BIT(RCC->DDRITFCFGR, RCC_DDRITFCFGR_DDRPHYDLP);
   SET_BIT(RCC->DDRPHYCCFGR, RCC_DDRPHYCCFGR_DDRPHYCEN);
 
@@ -2533,8 +2546,19 @@ HAL_StatusTypeDef HAL_DDR_Init(DDR_InitTypeDef *iddr)
 
     ddr_delay_us(DDR_DELAY_1_US);
 
+    if (cid_filtering)
+    {
+      ddr_disable_cid_filtering();
+    }
+
     /* Disable IO retention */
     SET_BIT(PWR->CR11, PWR_CR11_DDRRETDIS);
+
+    if (cid_filtering)
+    {
+      ddr_enable_cid_filtering();
+    }
+
     ddr_delay_us(DDR_DELAY_1_US);
 
     CLEAR_BIT(RCC->DDRCAPBCFGR, RCC_DDRCAPBCFGR_DDRCAPBRST);
@@ -2994,7 +3018,7 @@ HAL_StatusTypeDef HAL_DDR_SaveRetentionData(void)
 /**
   * @}
   */
-#endif /* DDRC & DDRPHYC */
+#endif /* DDRC */
 #endif /* HAL_DDR_MODULE_ENABLED */
 /**
   * @}

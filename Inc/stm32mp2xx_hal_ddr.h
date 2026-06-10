@@ -28,7 +28,7 @@ extern "C" {
 #include <stdbool.h>
 #include "stm32mp2xx_hal_def.h"
 
-#if defined (DDRC) && defined (DDRPHYC)
+#if defined (DDRC)
 
 /** @addtogroup STM32MP2xx_HAL_Driver
   * @{
@@ -425,7 +425,7 @@ HAL_StatusTypeDef HAL_DDR_SaveRetentionData(void);
   * @}
   */
 
-#endif /* DDRC & DDRPHYC */
+#endif /* DDRC */
 
 #ifdef __cplusplus
 }
